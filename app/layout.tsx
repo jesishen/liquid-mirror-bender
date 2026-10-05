@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Surface",
-  description: "Your screen is a layer of water. Touch it with your hands.",
+  title: "Liquid Screen",
+  description: "Just playing around with more interactions with your screen being a layer of water.",
 };
 
 export const viewport: Viewport = {

@@ -351,10 +351,10 @@ export default function Surface() {
           <div className="rings" aria-hidden>
             <span /><span /><span />
           </div>
-          <h1>Surface</h1>
-          <p>Your screen is a layer of water. Touch it.</p>
+          <h1>Caution: Your screen will turn into liquid! :O</h1>
+          <p>ofc im jk if you&apos;re scared btw</p>
           <button className="start" onClick={start}>Start camera</button>
-          <small>Video is processed on your device and never uploaded.</small>
+          <small>Designed and developed by Jessica Shen</small>
         </section>
       )}
 

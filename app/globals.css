@@ -78,10 +78,10 @@ button {
   gap: 14px;
   padding: 24px clamp(20px, 5vw, 64px);
   text-align: center;
-  background: radial-gradient(120% 90% at 50% 40%, #2b3b55 0%, #161e2e 75%);
+  background: radial-gradient(120% 90% at 50% 40%, #0b1f2a 0%, #000 70%);
   overflow: hidden;
 }
-.intro.dim { background: #000; color: rgba(255,255,255,0.6); }
+.intro.dim { background: #161e2e; color: rgba(255,255,255,0.6); }
 .intro h1 {
   font-size: clamp(22px, 4.2vw, 34px);
   font-weight: 600;

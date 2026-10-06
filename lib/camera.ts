@@ -15,14 +15,15 @@ export async function openCamera(facing: Facing): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error("Camera isn't available in this browser (it needs HTTPS).");
   }
-  const portrait = isTouchDevice() && isPortrait();
-  const long = 1280, short = 720;
+  // Always ask for the camera's normal (landscape) shape. Phones rotate it to
+  // portrait themselves without cropping. Asking for a portrait shape makes
+  // phones crop into the sensor — that was the "zoomed in" look.
   return navigator.mediaDevices.getUserMedia({
     audio: false,
     video: {
       facingMode: { ideal: facing },
-      width: { ideal: portrait ? short : long },
-      height: { ideal: portrait ? long : short },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
       frameRate: { ideal: 30 },
     },
   });

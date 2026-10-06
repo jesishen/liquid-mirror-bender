@@ -9,7 +9,7 @@
 const VOLUME = 0.9;
 const RAIN_FILE = "/sounds/Rain.mp3";   // file names are case-sensitive once deployed
 const WATER_FILE = "/sounds/water.mp3";
-const RAIN_LEVEL = 0.35;                // rain volume (0–1)
+const RAIN_LEVEL = 0.6;                // rain volume (0–1)
 const WATER_LEVEL = 1.0;                // touching-water volume at full speed (0–1)
 
 export class WaterSound {

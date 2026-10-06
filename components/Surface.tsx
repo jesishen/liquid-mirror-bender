@@ -80,17 +80,26 @@ export default function Surface() {
   }, []);
 
   // ---------- camera
-  const attachCamera = useCallback(async (face: Facing) => {
+    const attachCamera = useCallback(async (face: Facing) => {
     const video = videoRef.current!;
-    stopStream(stream.current);
-    stream.current = null;
-    const s = await openCamera(face);
-    stream.current = s;
-    facing.current = face;
-    video.srcObject = s;
-    await video.play();
-    engine.current?.setSource(video, shouldMirror(s, face));
-    lastVideoTime.current = -1;
+    // Phones sometimes hand over a sideways stream the first time (that's the
+    // "zoomed in" look). Check right away and re-ask once if it doesn't match.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      stopStream(stream.current);
+      stream.current = null;
+      const s = await openCamera(face);
+      stream.current = s;
+      facing.current = face;
+      video.srcObject = s;
+      await video.play();
+      engine.current?.setSource(video, shouldMirror(s, face));
+      lastVideoTime.current = -1;
+
+      if (!isTouchDevice()) return;
+      await new Promise((r) => setTimeout(r, 400)); // let the phone settle the stream
+      const streamPortrait = video.videoHeight > video.videoWidth;
+      if (streamPortrait === isPortrait()) return; // matches how the phone is held
+    }
   }, []);
 
   const switchToFallback = useCallback(() => {

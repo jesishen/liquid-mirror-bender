@@ -149,6 +149,7 @@ button {
   pointer-events: none;
 }
 .top > * { pointer-events: auto; }
+.top-actions { display: flex; gap: 10px; }
 .pill, .timer, .hint {
   background: var(--glass);
   backdrop-filter: blur(14px);

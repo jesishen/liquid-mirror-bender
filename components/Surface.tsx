@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HandLandmarker, NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { WaterEngine } from "@/lib/water";
+import { WaterSound } from "@/lib/sound";
 import { FingerField, type TipPoint } from "@/lib/fingers";
 import { loadHandTracker, handsToScreen, fingertipPoints, drawSkeleton, type Connection } from "@/lib/hands";
 import {
@@ -27,6 +28,7 @@ export default function Surface() {
   const [noCamera, setNoCamera] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [skeleton, setSkeleton] = useState(SKELETON_DEFAULT);
+  const [soundOn, setSoundOn] = useState(true);
   const [mode, setMode] = useState<Mode>("photo");
   const [videoOk, setVideoOk] = useState(true);
   const [recording, setRecording] = useState(false);
@@ -55,7 +57,7 @@ export default function Surface() {
   const compositor = useRef<ReturnType<typeof makeCompositor> | null>(null);
   const recorder = useRef<ReturnType<typeof startRecording> | null>(null);
   const raf = useRef(0);
-  const lastFrame = useRef(0);
+  const sound = useRef<WaterSound | null>(null);  const lastFrame = useRef(0);
   const needsLayout = useRef(true);
   const hintShown = useRef(false);
   const recovering = useRef(false);
@@ -151,6 +153,15 @@ export default function Surface() {
     const aspect = e.canvas.width / e.canvas.height;
     const inputs = fingers.current.update(points, now, dt, aspect);
 
+    // sound follows the water
+    const snd = sound.current;
+    if (snd) {
+      const ev = fingers.current.events;
+      ev.drips.forEach((d) => snd.drip(d.x));
+      ev.splashes.forEach((d) => snd.splash(d.x));
+      snd.swish(ev.dragSpeed);
+    }
+
     // 3. water
     e.step(inputs, dt);
     e.draw();
@@ -182,6 +193,12 @@ export default function Surface() {
   // ---------- start
   const start = useCallback(async () => {
     setPhase("starting");
+    try {
+      sound.current = new WaterSound(); // created on the tap, so browsers allow audio
+      sound.current.resume();
+    } catch {
+      sound.current = null; // no Web Audio → silent, everything else still works
+    }
     try {
       engine.current = new WaterEngine(waterRef.current!);
     } catch (err) {
@@ -235,7 +252,10 @@ export default function Surface() {
       if (document.hidden) {
         cancelAnimationFrame(raf.current);
         if (recorder.current) stopVideo();
+        sound.current?.swish(0);
+        sound.current?.suspend();
       } else {
+        sound.current?.resume();
         lastFrame.current = 0;
         raf.current = requestAnimationFrame(frame);
       }
@@ -299,7 +319,7 @@ export default function Surface() {
     const comp = compositor.current;
     if (!comp) return;
     comp.draw(skeletonOn.current);
-    recorder.current = startRecording(comp.canvas);
+    recorder.current = startRecording(comp.canvas, sound.current?.stream);
     setRecordSecs(0);
     setRecording(true);
   };
@@ -387,20 +407,36 @@ export default function Surface() {
             ) : status ? (
               <div className="pill">{status}</div>
             ) : <div />}
-            {!noCamera && (
+                        <div className="top-actions">
               <button
-                className={`round ${skeleton ? "on" : ""}`}
-                onClick={() => setSkeleton((s) => !s)}
-                aria-pressed={skeleton}
-                aria-label={skeleton ? "Hide hand skeleton" : "Show hand skeleton"}
-                title="Hand skeleton"
+                className={`round ${soundOn ? "on" : ""}`}
+                onClick={() => {
+                  const next = !soundOn;
+                  setSoundOn(next);
+                  sound.current?.resume();
+                  sound.current?.setMuted(!next);
+                }}
+                aria-pressed={soundOn}
+                aria-label={soundOn ? "Mute sound" : "Turn sound on"}
+                title="Sound"
               >
-                <HandIcon />
+                <SoundIcon on={soundOn} />
               </button>
-            )}
+              {!noCamera && (
+                <button
+                  className={`round ${skeleton ? "on" : ""}`}
+                  onClick={() => setSkeleton((s) => !s)}
+                  aria-pressed={skeleton}
+                  aria-label={skeleton ? "Hide hand skeleton" : "Show hand skeleton"}
+                  title="Hand skeleton"
+                >
+                  <HandIcon />
+                </button>
+              )}
+            </div>
           </div>
 
-          {showHint && !recording && <div className="hint">Hold your hand up to touch the water ✋</div>}
+          {showHint && !recording && <div className="hint">Hold your hand up to touch the water</div>}
 
           <div className="controls">
             {videoOk && (
@@ -474,6 +510,22 @@ function HandIcon() {
       <path d="M11 11.5v-7a1.5 1.5 0 0 1 3 0v7" />
       <path d="M14 11.5v-5a1.5 1.5 0 0 1 3 0V13" />
       <path d="M17 9.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.8-2.4L4.4 15.3a1.6 1.6 0 0 1 2.4-2.1L8 14.5" />
+    </svg>
+  );
+}
+
+function SoundIcon({ on }: { on: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+      {on ? (
+        <>
+          <path d="M15.5 9a4 4 0 0 1 0 6" />
+          <path d="M18 6.5a7.5 7.5 0 0 1 0 11" />
+        </>
+      ) : (
+        <path d="M16 9.5l5 5M21 9.5l-5 5" />
+      )}
     </svg>
   );
 }

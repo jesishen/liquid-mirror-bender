@@ -2,11 +2,8 @@ import type { WaterInput } from "./water";
 
 /**
  * Turns fingertip positions into water interactions.
- *
- *  - finger held still → bobs gently in the water, sending out a smooth,
- *                        continuous train of rings (no sudden pulses)
- *  - finger moving     → no rings; pushes a wake and drags the water along
- *  - stops moving      → rings fade back in smoothly
+ *  - finger held still → smooth, continuous rings
+ *  - finger moving     → no rings, just the liquify drag
  */
 
 export type TipPoint = { key: string; x: number; y: number }; // screen uv, y down
@@ -17,13 +14,14 @@ export const TUNING = {
   rippleHz: 2.2,          // rings per second
   rippleFadeIn: 0.35,     // seconds for rings to come back after a drag stops
   stillSpeed: 0.1,        // screen-heights/sec below which a finger counts as still
-  stillDelay: 0.4,        // seconds a finger must stay still before rings start       // screen-heights/sec below which a finger counts as still
-  pressPerSpeed: 0.04,    // wake strength while dragging
+  stillDelay: 0.4,        // seconds a finger must stay still before rings start
+  stillRadius: 0.03,      // how far a finger can wander and still count as "still"
+  pressPerSpeed: 0.04,       // no wave wake while dragging (wakes cause the circles)
   maxPress: 0.05,
-  drag: 2.5,              // how much water gets dragged along (liquify)
+  drag: 1.5,              // how much water gets dragged along (liquify)
   lostAfterMs: 180,       // a finger missing this long lifts out of the water
   jump: 0.22,             // bigger jumps between frames = a different finger (no streak)
-  flickSpeed: 0,        // faster than this (screen-heights/sec) = a flick
+  flickSpeed: Infinity,   // flick splash turned off
   splashAmp: 2.2,         // how big the flick splash is
   splashRadius: 0.035,    // splash size
   splashCooldownMs: 450,  // min time between splashes from one finger
@@ -72,7 +70,10 @@ type Track = {
   stillness: number; // 0 = dragging, 1 = fully still (rings at full strength)
   lastSplash: number;
   speed: number;     // smoothed (camera runs at ~30fps, screen at 60+)
+  stillTime: number; // how long it's been still (seconds)
+  anchorX: number; anchorY: number; // where it's been resting
 };
+
 export class FingerField {
   private tracks = new Map<string, Track>();
   events: FingerEvents = { drips: [], splashes: [], dragSpeed: 0 };
@@ -94,7 +95,8 @@ export class FingerField {
         t = {
           x: pt.x, y: pt.y,
           fx: new OneEuro(), fy: new OneEuro(),
-          lastSeen: now, phase: 0, stillness: 0, lastSplash: now, speed: 0, // eases in
+          lastSeen: now, phase: 0, stillness: 0, lastSplash: now,
+          speed: 0, stillTime: 0, anchorX: pt.x, anchorY: pt.y,
         };
         t.fx.filter(pt.x, sdt);
         t.fy.filter(pt.y, sdt);
@@ -109,14 +111,24 @@ export class FingerField {
       const speed = t.speed;
       const moving = speed >= TUNING.stillSpeed;
 
-      // rings switch off while dragging, fade back in when still
-      t.stillness = moving ? 0 : Math.min(1, t.stillness + sdt / TUNING.rippleFadeIn);
+      // "still" = the fingertip has stayed within a small spot, not just slow this frame
+      const wander = Math.hypot((x - t.anchorX) * aspect, y - t.anchorY);
+      if (wander > TUNING.stillRadius) {
+        t.anchorX = x;
+        t.anchorY = y;
+        t.stillTime = 0;
+      } else {
+        t.stillTime += sdt;
+      }
+      t.stillness = Math.max(0, Math.min(1, (t.stillTime - TUNING.stillDelay) / TUNING.rippleFadeIn));
+      if (t.stillTime === 0) t.phase = 0; // rings restart gently from calm water
+
       const cycle = Math.floor(t.phase / (Math.PI * 2));
       t.phase += sdt * TUNING.rippleHz * Math.PI * 2;
       if (Math.floor(t.phase / (Math.PI * 2)) !== cycle && t.stillness > 0.8) ev.drips.push({ x });
       if (moving) ev.dragSpeed = Math.max(ev.dragSpeed, speed);
 
-      // a fast flick → one big splash
+      // a fast flick → one big splash (off while flickSpeed is Infinity)
       let splash = 0;
       if (speed > TUNING.flickSpeed && now - t.lastSplash > TUNING.splashCooldownMs) {
         splash = TUNING.splashAmp;
@@ -133,7 +145,7 @@ export class FingerField {
       t.x = x;
       t.y = y;
       t.lastSeen = now;
-        out.push({
+      out.push({
         x, y, px, py,
         pulse: pulse + splash,
         press,

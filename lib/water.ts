@@ -133,8 +133,8 @@ void main() {
 
   // --- very subtle natural light catching the ripples
   const float LIGHT_TILT   = 9.5;   // how much the ripples catch light
-  const float SPEC_AMOUNT  = 0.35;  // brightness of the little glints
-  const float SHADE_AMOUNT = 0.38;  // soft light/dark on the sides of each ring
+  const float SPEC_AMOUNT  = 0.42;  // brightness of the little glints
+  const float SHADE_AMOUNT = 0.40;  // soft light/dark on the sides of each ring
   vec3 up = vec3(0.0, 0.0, 1.0);
   vec3 n = normalize(vec3(-slope * LIGHT_TILT, 1.0));
   vec3 L = normalize(vec3(-0.35, 0.55, 1.0));  // soft light from the upper left

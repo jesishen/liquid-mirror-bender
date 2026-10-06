@@ -27,6 +27,7 @@ export const TUNING = {
   splashAmp: 2.2,         // how big the flick splash is
   splashRadius: 0.035,    // splash size
   splashCooldownMs: 450,  // min time between splashes from one finger
+  portraitSize: 0.6,      // ripple size in portrait (1 = same as landscape)
 };
 
 /** What happened this frame — used for sound. */
@@ -81,6 +82,7 @@ export class FingerField {
     const seen = new Set<string>();
     const sdt = Math.max(dt, 1 / 240);
     const frameScale = Math.min(1, dt * 60); // same strength at 60Hz and 120Hz
+    const sizeScale = aspect < 1 ? TUNING.portraitSize : 1; // smaller ripples in portrait
     const ev: FingerEvents = (this.events = { drips: [], splashes: [], dragSpeed: 0 });
 
     for (const pt of points) {
@@ -136,7 +138,7 @@ export class FingerField {
         pulse: pulse + splash,
         press,
         drag: TUNING.drag,
-        radius: splash ? TUNING.splashRadius : TUNING.radius,
+        radius: (splash ? TUNING.splashRadius : TUNING.radius) * sizeScale,
       });
     }
 
